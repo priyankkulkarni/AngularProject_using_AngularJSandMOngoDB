@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html ng-app="myApp">
+<head>
+    <title>Travel Itinerary Planner</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            width: 50%;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="number"],
+        textarea {
+            width: calc(100% - 10px);
+            padding: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 8px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        input[type="text"]::placeholder,
+        input[type="date"]::placeholder,
+        input[type="number"]::placeholder,
+        textarea::placeholder {
+            color: #999;
+        }
+    </style>
+</head>
+<body ng-controller="TripPlannerController as tripCtrl">
+    <h1>Travel Itinerary Planner</h1>
+
+    <div>
+        <h2>Insert your Trip Data</h2>
+        <form ng-submit="tripCtrl.addTrip()">
+            <label for="destination">Destination:</label>
+            <input type="text" id="destination" ng-model="tripCtrl.newTrip.destination" required><br><br>
+            
+            <label for="startDate">Start Date:</label>
+            <input type="date" id="startDate" ng-model="tripCtrl.newTrip.startDate" required><br><br>
+            
+            <label for="endDate">End Date:</label>
+            <input type="date" id="endDate" ng-model="tripCtrl.newTrip.endDate" required><br><br>
+            
+            <label for="numMembers">Number of Members:</label>
+            <input type="number" id="numMembers" ng-model="tripCtrl.newTrip.numMembers" required><br><br>
+            
+            <label for="expenses">Expenses:</label>
+            <input type="number" id="expenses" ng-model="tripCtrl.newTrip.expenses" required><br><br>
+            
+            <label for="activities">Activities:</label>
+            <textarea id="activities" ng-model="tripCtrl.newTrip.activities" required></textarea><br><br>
+            
+            <button type="submit">Add Trip</button>
+        </form>
+    </div>
+
+    <div ng-show="tripCtrl.tripsLoaded">
+        <h2>Trip List</h2>
+        <input type="text" placeholder="Search" ng-model="search">
+        <table>
+            <tr>
+                <th>Destination</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Number of Members</th>
+                <th>Expenses</th>
+                <th>Activities</th>
+                <th>Actions</th>
+            </tr>
+            <tr ng-repeat="trip in tripCtrl.trips | filter:search">
+                <td>{{ trip.destination }}</td>
+                <td>{{ trip.startDate | date }}</td>
+                <td>{{ trip.endDate | date }}</td>
+                <td>{{ trip.numMembers }}</td>
+                <td>{{ trip.expenses }}</td>
+                <td>{{ trip.activities }}</td>
+                <td>
+                    <button ng-click="tripCtrl.editTrip(trip._id)">Edit</button>
+                    <button ng-click="tripCtrl.deleteTrip(trip._id)">Delete</button>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        angular.module('myApp', [])
+    .controller('TripPlannerController', function($http) {
+        var tripCtrl = this;
+        tripCtrl.newTrip = {};
+        tripCtrl.editingTrip = null;
+        tripCtrl.trips = [];
+        tripCtrl.tripsLoaded = false;
+       
+
+        // Load trips from the server
+        $http.get('http://localhost:3000/trips')
+            .then(function(response) {
+                tripCtrl.trips = response.data;
+                console.log(response.data);
+                tripCtrl.tripsLoaded = true;
+            })
+            .catch(function(error) {
+                console.error('Error loading trips:', error);
+            });
+
+        tripCtrl.addTrip = function() {
+            $http.post('http://localhost:3000/trips', tripCtrl.newTrip)
+                .then(function(response) {
+                    tripCtrl.trips.push(response.data);
+                    tripCtrl.newTrip = {};
+                });
+        };
+
+        tripCtrl.deleteTrip = function(tripId) {
+            $http.delete('http://localhost:3000/trips/' + tripId)
+                .then(function(response) {
+                    tripCtrl.trips = tripCtrl.trips.filter(function(trip) {
+                        return trip._id !== tripId;
+                    });
+                });
+        };
+    //     vm.editTrip = function(trip) {
+    //   vm.newTrip = angular.copy(trip);
+    //   vm.deleteTrip(trip);
+    // };
+
+
+    tripCtrl.editTrip = function(tripId) {
+    // Find the trip by its ID
+    var tripToEdit = tripCtrl.trips.find(function(trip) {
+        return trip._id === tripId;
+    });
+
+    // Copy the trip data to the newTrip object for editing
+    tripCtrl.newTrip = angular.copy(tripToEdit);
+    tripCtrl.deleteTrip(tripId)
+};
+
+tripCtrl.updateTrip = function() {
+    $http.put('http://localhost:3000/trips/' + tripCtrl.newTrip._id, tripCtrl.newTrip)
+        .then(function(response) {
+            // Update the trip in the local array
+            var index = tripCtrl.trips.findIndex(function(trip) {
+                return trip._id === tripCtrl.newTrip._id;
+            });
+            tripCtrl.trips[index] = response.data;
+
+            // Reset the newTrip object and editingTrip
+            tripCtrl.newTrip = {};
+            tripCtrl.editingTrip = null;
+        })
+        .catch(function(error) {
+            console.error('Error updating trip:', error);
+        });
+};
+
+    });
+
+    </script>
+</body>
+</html>
